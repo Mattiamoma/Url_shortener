@@ -1,12 +1,22 @@
 const sqlite = require('sqlite3').verbose();
 const nanoid = require('nanoid');
-
+const fs = require('fs');
 
 class DatabaseManager {
-    constructor() {
-        this.db = new sqlite.Database('./db/urlShortener.db', (err) => {
+    constructor(dbPath) {
+        // Create database if path does not exist
+        if(!fs.existsSync(dbPath)) {
+            console.log('Database does not exist, creating...');
+            let path = dbPath.split('/');
+            path.pop();
+            path = path.join('/');
+            fs.mkdirSync(path, { recursive: true });
+        }
+
+        this.db = new sqlite.Database(dbPath, (err) => {
             if (err) {
                 console.error(err.message);
+                process.exit(1);
             }
             console.log('Connected to the urls database.');
         });
@@ -14,7 +24,7 @@ class DatabaseManager {
     }
 
 
-
+    // Get the short URL from the database using the full URL
     getShortUrl(fullUrl) {
         this.db.get('SELECT shortUrl FROM urls WHERE fullUrl = ?', [fullUrl], (err, row) => {
             if (err || !row) {
@@ -25,7 +35,7 @@ class DatabaseManager {
         });
     }
 
-
+    // Get the full URL from the database using the short URL
     getFullUrl(shortUrl, callback) {
         this.db.get('SELECT fullUrl FROM urls WHERE shortUrl = ?', [shortUrl], (err, row) => {
             if (err || !row) {
@@ -38,26 +48,42 @@ class DatabaseManager {
 
 
 
-    addUrl(fullUrl, callback) {
-        let searchShort = this.getShortUrl(fullUrl);
-        if (searchShort) {
-            callback(searchShort);
-        } else {
-            let shortUrl = nanoid.nanoid(12);
-
-            this.db.run('INSERT INTO urls(fullUrl, shortUrl) VALUES(?, ?)', [fullUrl, shortUrl], (err) => {
-                if (err) {
-                    console.error(err.message);
-                    callback(err);
+    async addUrl(fullUrl, callback) {
+        // Check if URL already exists in database and return short URL if it does
+        
+        let check = await new Promise((resolve, reject) => {
+            this.db.get('SELECT shortUrl FROM urls WHERE fullUrl = ?', [fullUrl], (err, row) => {
+                if (!err && row) {
+                    console.log('URL already exists in database:', row.shortUrl);
+                    callback(row.shortUrl);
+                    resolve(true);
                 } else {
-                    console.log('Added new URL to database');
-                    callback(shortUrl);
+                    resolve(false);
                 }
             });
+        });
+
+        if (check) {
+            return;
         }
+
+        // Generate short URL and add to database then return it through callback
+        let shortUrl = nanoid.nanoid(12);
+        console.log('Generated short URL:', shortUrl);
+        this.db.run('INSERT INTO urls(fullUrl, shortUrl) VALUES(?, ?)', [fullUrl, shortUrl], (err) => {
+            if (err) {
+                console.error(err.message);
+                callback(undefined);
+            } 
+            else {
+                console.log('Added new URL to database');
+                callback(shortUrl);
+            }
+        });
+        
     }
     
-
+    // Increment the number of clicks for a short URL to track usage
     incrementClicks(shortUrl, callback) {
         this.db.run('UPDATE urls SET clicks = clicks + 1 WHERE shortUrl = ?', [shortUrl], (err) => {
             if (err) {
@@ -69,11 +95,7 @@ class DatabaseManager {
             }
         });
     }
-
-
-    
 }
-
 
 module.exports = DatabaseManager;
 

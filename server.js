@@ -4,16 +4,22 @@ const databaseManager = require('./databaseManager');
 const validUrl = require('valid-url');
 const db = new databaseManager("./db/urlShortener.db");
 
+
+setInterval(() => {
+    console.log('Cleaning up expired URLs');
+    db.cleanDates();
+}, 1000 * 60 * 60);
+
+
 app.use(express.json());
 
 app.set('view engine', 'ejs');
-
 
 app.get('/', async (req, res) => {
     res.render('index');
 });
 
-
+// Determine if the URL is valid and add it to the database generating a short URL
 app.post('/shorten', async (req, res) => {
     let fullUrl = req.body.fullUrl;
     if(!fullUrl){
@@ -54,6 +60,7 @@ app.post('/shorten', async (req, res) => {
     });
 });
 
+// Redirect to the full URL when the short URL is visited
 app.get('/:shortUrl', async (req, res) => {
     const shortUrl = req.params.shortUrl;
     
@@ -74,8 +81,8 @@ app.get('/:shortUrl', async (req, res) => {
     });
 });
 
-
-app.get("*", (req, res) => {
+// Handle 404 errors for all other routes
+app.get("*", (req, res) => { 
     res.status(404).send('Route not found');
 });
 

@@ -20,7 +20,7 @@ class DatabaseManager {
             }
             console.log('Connected to the urls database.');
         });
-        this.db.run('CREATE TABLE IF NOT EXISTS urls(fullUrl TEXT PRIMARY KEY, shortUrl TEXT, clicks INTEGER DEFAULT 0)');
+        this.db.run('CREATE TABLE IF NOT EXISTS urls(fullUrl TEXT PRIMARY KEY, shortUrl TEXT, clicks INTEGER DEFAULT 0, exp DATETIME DEFAULT CURRENT_TIMESTAMP)');
     }
 
 
@@ -69,8 +69,11 @@ class DatabaseManager {
 
         // Generate short URL and add to database then return it through callback
         let shortUrl = nanoid.nanoid(12);
+        const oneWeekFromNow = new Date();
+        oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+        const formattedDate = oneWeekFromNow.toISOString();
         console.log('Generated short URL:', shortUrl);
-        this.db.run('INSERT INTO urls(fullUrl, shortUrl) VALUES(?, ?)', [fullUrl, shortUrl], (err) => {
+        this.db.run('INSERT INTO urls(fullUrl, shortUrl, exp) VALUES(?, ?, ?)', [fullUrl, shortUrl, formattedDate], (err) => {
             if (err) {
                 console.error(err.message);
                 callback(undefined);
@@ -94,6 +97,12 @@ class DatabaseManager {
                 callback(true);
             }
         });
+    }
+
+
+
+    cleanDates() {
+        this.db.run('DELETE FROM urls WHERE exp > CURRENT_TIMESTAMP');
     }
 }
 

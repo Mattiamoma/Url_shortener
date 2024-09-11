@@ -20,8 +20,51 @@ class DatabaseManager {
             }
             console.log('Connected to the urls database.');
         });
-        this.db.run('CREATE TABLE IF NOT EXISTS urls(fullUrl TEXT PRIMARY KEY, shortUrl TEXT, clicks INTEGER DEFAULT 0, exp DATETIME DEFAULT CURRENT_TIMESTAMP)');
+
+        this.db.run(`
+            CREATE TABLE IF NOT EXISTS users(
+                username TEXT PRIMARY KEY, 
+                password TEXT NOT NULL
+            )`
+        );
+
+        this.db.run(`
+            CREATE TABLE IF NOT EXISTS urls(
+                fullUrl TEXT PRIMARY KEY,
+                shortUrl TEXT,
+                clicks INTEGER DEFAULT 0,
+                exp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                username TEXT REFERENCES users(username) ON DELETE CASCADE DEFAULT NULL
+            )
+        `);
     }
+
+
+    addUser(username, password, callback) {
+        this.db.run('INSERT INTO users(username, password) VALUES(?, ?)', [username, password], (err) => {
+            if (err) {
+                console.error(err.message);
+                callback(false);
+            } else {
+                console.log('Added new user to database');
+                callback(true);
+            }
+        });
+    }
+
+
+    searchUser(username) {
+        return new Promise((resolve, reject) => {
+            this.db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
+                if (err || !row) {
+                    resolve(false);
+                } else {
+                    resolve(true);
+                }
+            });
+        });
+    }
+
 
 
     // Get the short URL from the database using the full URL
@@ -102,7 +145,7 @@ class DatabaseManager {
 
 
     cleanDates() {
-        this.db.run('DELETE FROM urls WHERE exp > CURRENT_TIMESTAMP');
+        this.db.run('DELETE FROM urls WHERE exp < CURRENT_TIMESTAMP');
     }
 }
 

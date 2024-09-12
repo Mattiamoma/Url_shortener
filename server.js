@@ -75,7 +75,7 @@ app.post("/auth/signIn", async (req, res) => {
         
     }
 
-    if(db.searchUser(username)){
+    if(!db.searchUser(username)){
         return res.send({
             status: 400,
             message: 'Username already exists'
@@ -136,8 +136,9 @@ app.get('/getUsername', authenticateToken, async (req, res) => {
 
 
 // Determine if the URL is valid and add it to the database generating a short URL
-app.post('/shorten', async (req, res) => {
+app.post('/shorten', authenticateToken, async (req, res) => {
     let fullUrl = req.body.fullUrl;
+    const username = req.user ? req.user.username : null;
     if(!fullUrl){
         return res.send({
             status: 400,
@@ -159,7 +160,7 @@ app.post('/shorten', async (req, res) => {
 
     }
 
-    db.addUrl(fullUrl, (shortUrl) => {
+    db.addUrl(fullUrl, username, (shortUrl) => {
         if (shortUrl) {
             shortUrl = `${req.protocol}://${req.get('host')}/${shortUrl}`;
             res.send({

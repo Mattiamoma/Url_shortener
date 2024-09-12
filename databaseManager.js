@@ -1,6 +1,7 @@
 const sqlite = require('sqlite3').verbose();
 const nanoid = require('nanoid');
 const fs = require('fs');
+const { get } = require('http');
 
 class DatabaseManager {
     constructor(dbPath) {
@@ -30,8 +31,8 @@ class DatabaseManager {
 
         this.db.run(`
             CREATE TABLE IF NOT EXISTS urls(
-                fullUrl TEXT PRIMARY KEY,
-                shortUrl TEXT,
+                fullUrl TEXT,
+                shortUrl TEXT PRIMARY KEY,
                 clicks INTEGER DEFAULT 0,
                 exp DATETIME DEFAULT CURRENT_TIMESTAMP,
                 username TEXT REFERENCES users(username) ON DELETE CASCADE DEFAULT NULL
@@ -68,12 +69,25 @@ class DatabaseManager {
 
 
     // Get the short URL from the database using the full URL
-    getShortUrl(fullUrl) {
-        this.db.get('SELECT shortUrl FROM urls WHERE fullUrl = ?', [fullUrl], (err, row) => {
-            if (err || !row) {
-                return undefined;
+    getShortUrl(fullUrl, user) {
+        return new Promise((resolve, reject) => {
+            if (!user) {
+                this.db.get('SELECT shortUrl FROM urls WHERE fullUrl = ? AND username IS NULL', [fullUrl], (err, row) => {
+                    if (err || !row) {
+                        resolve(undefined);
+                    } else {
+                        resolve(row.shortUrl);
+                    }
+                });
             } else {
-                return row.shortUrl;
+                this.db.get('SELECT shortUrl FROM urls WHERE fullUrl = ? AND username = ?', [fullUrl, user], (err, row) => {
+                    console.log(row);
+                    if (err || !row) {
+                        resolve(undefined);
+                    } else {
+                        resolve(row.shortUrl);
+                    }
+                });
             }
         });
     }
@@ -90,33 +104,30 @@ class DatabaseManager {
     }
 
 
+    
+    
 
-    async addUrl(fullUrl, callback) {
+    async addUrl(fullUrl, user, callback) {
         // Check if URL already exists in database and return short URL if it does
         
-        let check = await new Promise((resolve, reject) => {
-            this.db.get('SELECT shortUrl FROM urls WHERE fullUrl = ?', [fullUrl], (err, row) => {
-                if (!err && row) {
-                    console.log('URL already exists in database:', row.shortUrl);
-                    callback(row.shortUrl);
-                    resolve(true);
-                } else {
-                    resolve(false);
-                }
-            });
-        });
+        let check = await this.getShortUrl(fullUrl, user);
 
         if (check) {
+            callback(check);
             return;
         }
-
+        
         // Generate short URL and add to database then return it through callback
         let shortUrl = nanoid.nanoid(12);
-        const oneWeekFromNow = new Date();
+        let oneWeekFromNow = new Date();
         oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
-        const formattedDate = oneWeekFromNow.toISOString();
+        let formattedDate = oneWeekFromNow.toISOString();
+
+        if(user) {
+            //insert custom parameters for logged users
+        }
         console.log('Generated short URL:', shortUrl);
-        this.db.run('INSERT INTO urls(fullUrl, shortUrl, exp) VALUES(?, ?, ?)', [fullUrl, shortUrl, formattedDate], (err) => {
+        this.db.run('INSERT INTO urls(fullUrl, shortUrl, exp, username) VALUES(?, ?, ?, ?)', [fullUrl, shortUrl, formattedDate, user], (err) => {
             if (err) {
                 console.error(err.message);
                 callback(undefined);

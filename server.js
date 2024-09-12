@@ -11,7 +11,7 @@ const saltRounds = 10;
 setInterval(() => {
     console.log('Cleaning up expired URLs');
     db.cleanDates();
-}, 24 * 60 * 60 * 1000); // Run every 24 hours
+}, 7 * 60 * 60 * 1000); // Run every 24 hours
 
 
 
@@ -137,6 +137,7 @@ app.get('/getUsername', authenticateToken, async (req, res) => {
 
 // Determine if the URL is valid and add it to the database generating a short URL
 app.post('/shorten', authenticateToken, async (req, res) => {
+    var params = req.body;
     let fullUrl = req.body.fullUrl;
     const username = req.user ? req.user.username : null;
     if(!fullUrl){
@@ -157,10 +158,12 @@ app.post('/shorten', authenticateToken, async (req, res) => {
             status: 400,
             message: 'Invalid URL'
         });
-
     }
 
-    db.addUrl(fullUrl, username, (shortUrl) => {
+    params.fullUrl = fullUrl;
+    
+
+    db.addUrl(params, username, (shortUrl) => {
         if (shortUrl) {
             shortUrl = `${req.protocol}://${req.get('host')}/${shortUrl}`;
             res.send({

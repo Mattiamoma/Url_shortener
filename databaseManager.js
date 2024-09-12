@@ -1,8 +1,7 @@
 const sqlite = require('sqlite3').verbose();
 const nanoid = require('nanoid');
 const fs = require('fs');
-const { get } = require('http');
-
+const defaultExp = 7 //days
 class DatabaseManager {
     constructor(dbPath) {
         // Create database if path does not exist
@@ -34,7 +33,7 @@ class DatabaseManager {
                 fullUrl TEXT,
                 shortUrl TEXT PRIMARY KEY,
                 clicks INTEGER DEFAULT 0,
-                exp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                exp INTEGER DEFAULT 0,
                 username TEXT REFERENCES users(username) ON DELETE CASCADE DEFAULT NULL
             )
         `);
@@ -107,24 +106,36 @@ class DatabaseManager {
     
     
 
-    async addUrl(fullUrl, user, callback) {
+    async addUrl(params, user, callback) {
         // Check if URL already exists in database and return short URL if it does
-        
+        let fullUrl = params.fullUrl;
         let check = await this.getShortUrl(fullUrl, user);
 
         if (check) {
             callback(check);
             return;
         }
-        
-        // Generate short URL and add to database then return it through callback
-        let shortUrl = nanoid.nanoid(12);
-        let oneWeekFromNow = new Date();
-        oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
-        let formattedDate = oneWeekFromNow.toISOString();
+        let date = new Date();
+        var formattedDate = date.setDate(tenSecondsFromNow.getDate() + defaultExp);
+        var shortUrl = nanoid.nanoid(12);
 
         if(user) {
             //insert custom parameters for logged users
+            if(params.exp) {
+                formattedDate = date.setDate(date.getDate() + params.exp);
+            }
+
+            if(params.customDir) {
+                this.getFullUrl(params.customUrl, (fullUrl) => {
+                    if (!fullUrl) {
+                        shortUrl = params.customDir;
+                        return;
+                    }
+                });
+            }
+
+            
+
         }
         console.log('Generated short URL:', shortUrl);
         this.db.run('INSERT INTO urls(fullUrl, shortUrl, exp, username) VALUES(?, ?, ?, ?)', [fullUrl, shortUrl, formattedDate, user], (err) => {
@@ -156,7 +167,12 @@ class DatabaseManager {
 
 
     cleanDates() {
-        this.db.run('DELETE FROM urls WHERE exp < CURRENT_TIMESTAMP');
+        let now = Date.now();
+        this.db.get('DELETE FROM urls WHERE exp < ?', [now], (err) => {
+            if (err) {
+                console.error(err.message);
+            }
+        });
     }
 }
 

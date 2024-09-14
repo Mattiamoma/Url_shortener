@@ -7,6 +7,17 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 const saltRounds = 10;
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 5,
+    message: { status: 429, message: 'Too many requests, please try again later' },
+    headers: true,
+});
+
+
+
 
 setInterval(() => {
     console.log('Cleaning up expired URLs');
@@ -45,6 +56,7 @@ function authenticateToken(req, res, next) {
 }
 
 
+app.use(limiter);
 app.use(express.json());
 
 app.set('view engine', 'ejs');

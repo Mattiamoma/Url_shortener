@@ -102,8 +102,6 @@ class DatabaseManager {
         });
     }
 
-
-    
     
 
     async addUrl(params, user, callback) {
@@ -116,7 +114,7 @@ class DatabaseManager {
             return;
         }
         let date = new Date();
-        var formattedDate = date.setDate(tenSecondsFromNow.getDate() + defaultExp);
+        var formattedDate = date.setDate(date.getDate() + defaultExp);
         var shortUrl = nanoid.nanoid(12);
 
         if(user) {
@@ -124,8 +122,8 @@ class DatabaseManager {
             if(params.exp) {
                 formattedDate = date.setDate(date.getDate() + params.exp);
             }
-
             if(params.customDir) {
+                //check if there is already custom URL in db as shortUrl
                 this.getFullUrl(params.customUrl, (fullUrl) => {
                     if (!fullUrl) {
                         shortUrl = params.customDir;
@@ -133,8 +131,6 @@ class DatabaseManager {
                     }
                 });
             }
-
-            
 
         }
         console.log('Generated short URL:', shortUrl);
@@ -148,7 +144,6 @@ class DatabaseManager {
                 callback(shortUrl);
             }
         });
-        
     }
     
     // Increment the number of clicks for a short URL to track usage

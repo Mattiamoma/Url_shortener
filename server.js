@@ -9,13 +9,28 @@ require('dotenv').config();
 const saltRounds = 10;
 const rateLimit = require('express-rate-limit');
 
-const limiter = rateLimit({
+const globalLimiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
     max: 5,
     message: { status: 429, message: 'Too many requests, please try again later' },
     headers: true,
 });
 
+const loggedInLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 15,
+    message: { status: 429, message: 'Too many requests, please try again later' },
+    headers: true,
+});
+
+
+function useCustomLimiter(req, res, next) {
+    if (req.user) {
+        loggedInLimiter(req, res, next);
+    } else {
+        globalLimiter(req, res, next);
+    }
+}
 
 
 
@@ -55,8 +70,6 @@ function authenticateToken(req, res, next) {
 
 }
 
-
-app.use(limiter);
 app.use(express.json());
 
 app.set('view engine', 'ejs');
@@ -133,7 +146,7 @@ app.post("/auth/signIn", async (req, res) => {
 
 
 
-app.get('/getUsername', authenticateToken, async (req, res) => {
+app.get('/api/getUsername', authenticateToken, useCustomLimiter, async (req, res) => {
     if (!req.user) {
         return res.send({
             status: 401,
@@ -148,7 +161,7 @@ app.get('/getUsername', authenticateToken, async (req, res) => {
 
 
 // Determine if the URL is valid and add it to the database generating a short URL
-app.post('/shorten', authenticateToken, async (req, res) => {
+app.post('/api/shorten', authenticateToken, useCustomLimiter, async (req, res) => {
     var params = req.body;
     let fullUrl = req.body.fullUrl;
     const username = req.user ? req.user.username : null;

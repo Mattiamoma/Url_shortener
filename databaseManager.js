@@ -80,7 +80,6 @@ class DatabaseManager {
                 });
             } else {
                 this.db.get('SELECT shortUrl FROM urls WHERE fullUrl = ? AND username = ?', [fullUrl, user], (err, row) => {
-                    console.log(row);
                     if (err || !row) {
                         resolve(undefined);
                     } else {
@@ -126,10 +125,12 @@ class DatabaseManager {
                 //check if there is already custom URL in db as shortUrl
                 this.getFullUrl(params.customUrl, (fullUrl) => {
                     if (!fullUrl) {
+                        
                         shortUrl = params.customDir;
                         return;
                     }
                 });
+
             }
 
         }

@@ -72,11 +72,6 @@ function authenticateToken(req, res, next) {
 
 app.use(express.json());
 
-app.set('view engine', 'ejs');
-
-app.get('/', async (req, res) => {
-    res.render('index');
-});
 
 // sign in route to create a new user and generate an API key to access more API features
 app.post("/auth/signIn", async (req, res) => {

@@ -12,7 +12,7 @@ This project is a URL shortener service built with Node.js. It allows users to c
 Clone the repository:
 
 ```
-git clone https://github.com/yourusername/url-shortener.git
+git clone https://github.com/Mattiamoma/url-shortener.git
 ```
 Navigate to the project directory:
 ```
